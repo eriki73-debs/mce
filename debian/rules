@@ -13,23 +13,6 @@ pkgdir = $(CURDIR)/debian/tmp
 makefileversion := $$(grep -m1 '^VERSION' Makefile | sed -e 's/VERSION *:= *//')
 changelogversion := $$(grep -m1 'mce (' debian/changelog | sed -e 's/mce (\(.*\)).*/\1/;s/\(^'$(makefileversion)'\).*/\1/')
 
-CC = gcc
-CFLAGS = -Wall -g
-LDFLAGS = -Wl,--as-needed
-MODULES_CFLAGS = $(CFLAGS) -DUSE_LIBCAL
-MODULES_LDFLAGS = $(LDFLAGS) $$(pkg-config libcal --libs)
-
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0
-else
-	CFLAGS += -O2
-endif
-
-# Use soft-float and thumb mode if enabled
-ifneq (,$(findstring thumb,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -mthumb
-endif
-
 .PHONY: clean
 clean:
 	dh_testdir
@@ -52,9 +35,7 @@ check:
 build-stamp:
 	dh_testdir
 
-	$(MAKE) targets CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)"
-	$(MAKE) modules CC="$(CC)" CFLAGS="$(MODULES_CFLAGS)" LDFLAGS="$(MODULES_LDFLAGS)"
-	$(MAKE) tools CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)"
+	$(MAKE) build
 
 	touch build-stamp
 
@@ -65,7 +46,7 @@ build: check build-stamp
 install:
 	dh_testdir
 	dh_testroot
-	dh_clean -k
+	dh_prep
 	dh_installdirs
 	$(MAKE) install DESTDIR="$(pkgdir)"
 
@@ -80,14 +61,14 @@ binary-arch: build install
 	dh_installdocs
 	dh_installman
 	dh_installchangelogs
-	dh_install -s
+	dh_install -a
 	dh_strip -pmce --dbg-package=mce-dbg
 	dh_strip -pmcetools --dbg-package=mcetools-dbg
 	dh_link
 	dh_compress
 	dh_fixperms
 	dh_installdeb
-	dh_shlibdeps
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
